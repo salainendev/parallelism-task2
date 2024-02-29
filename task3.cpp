@@ -26,16 +26,18 @@ int main(int argc, char const *argv[])
     std::unique_ptr<double[]> vector_b(new double[N]);
     std::unique_ptr<double[]> vector_c(new double[N]); // хранит Ax-b
     double l2normSum = 0.0;
-    // double prevnormsum = 0.0;
+    double prevnormsum = 0.0;
     double l2normb = 0.0; // норма l2 для вектора правой части, посчитаем её заранее 
     // инициализация векторов и матрицы
    #pragma omp parallel 
     {
-       #pragma omp for schedule(MYVAR, int(N/(thr_cnt))) 
+       #pragma omp for schedule(MYVAR, int(N/(thr_cnt*2))) 
         for(int i=0;i<N;i++){    
             matrix_A[i] = std::make_unique<double[]>(N);
             vector_X[i] = 0.0;
             vector_b[i] = (double)N+1;
+            #pragma omp atomic
+            l2normb += vector_b[i]*vector_b[i];
             for (int j = 0; j < N; j++){
                     matrix_A[i][j] = (i==j) ? 2.0:1.0;
             }
@@ -47,7 +49,7 @@ int main(int argc, char const *argv[])
     {
         // проверяем, достаточно ли мы приблизили решение
         // умножаем А на вектор Х, потом отнимаем vector_b для хранения результата юзаем vector_c
-        #pragma omp for schedule(MYVAR,int(N/(thr_cnt))) 
+        #pragma omp for schedule(MYVAR,int(N/(thr_cnt*2))) 
         for (int i=0 ; i < N ; i++ ){
             vector_c[i] = 0.0;
             for (size_t j = 0; j < N; j++)
@@ -60,24 +62,28 @@ int main(int argc, char const *argv[])
     #pragma omp parallel
     {
         double sumloc = 0.0;
-        double sumlocb = 0.0;
-        #pragma omp for schedule(MYVAR,int(N/(thr_cnt))) 
+        //double sumlocb = 0.0;
+        #pragma omp for schedule(MYVAR,int(N/(thr_cnt*2))) 
         for (int i = 0;i<N;i++){
             sumloc+=vector_c[i]*vector_c[i];
-            sumlocb+=vector_b[i]*vector_b[i];
+           // sumlocb+=vector_b[i]*vector_b[i];
         }
-        #pragma omp atomic
-        l2normb+=sumlocb;
+      //  #pragma omp atomic
+      //  l2normb+=sumlocb;
         #pragma omp atomic
         l2normSum += sumloc;
     }
     //std::cout <<std::fixed << l2normSum/l2normb <<" " <<vector_X[24] <<std::endl;
-    if (l2normSum/l2normb<epsilon) break; 
+    if (l2normSum/l2normb<epsilon) break;
+    if (l2normSum>prevnormsum && prevnormsum!=0) {
+        std::cout << "расхождение(( "<<std::endl;
+        break;}
+    prevnormsum = l2normSum; 
     l2normSum = 0 ;
-    l2normb = 0;
+   // l2normb = 0;
     #pragma omp parallel
     {
-        #pragma omp for schedule(MYVAR,int(N/(thr_cnt))) 
+        #pragma omp for schedule(MYVAR,int(N/(thr_cnt*2)))
         for (int i = 0;i < N; i++)
         {
             vector_X[i] -= tau*vector_c[i]; 
@@ -171,6 +177,14 @@ int main(int argc, char const *argv[])
         #pragma omp barrier
         #pragma omp single
         if (l2normSum/l2normb<epsilon) flag=false;
+        #pragma omp barrier
+        #pragma omp single
+        if (l2normSum>prevnormsum && prevnormsum!=0){
+            std::cout<<"расхождение(((("<<std::endl;
+            flag=false;
+        }
+        #pragma omp single
+        prevnormsum = l2normSum;
         l2normb = 0.0;
         l2normSum = 0.0;
     }
