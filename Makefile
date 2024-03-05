@@ -1,24 +1,20 @@
+
+lib = -fopenmp
+
 all:
-	gcc -o program task1.c -fopenmp -DFIRSTVAR -DTYPEGUIDED
-	gcc -o  program2 task2.c -lm -fopenmp -DFIRSTVAR -DTYPEGUIDED
-	g++ -o program3_1var_guided task3.cpp -fopenmp -DFIRSTVAR -DTYPEGUIDED
-	g++ -o program3_1var_static task3.cpp -fopenmp -DFIRSTVAR -DTYPESTATIC
-	g++ -o program3_1var_dynamic task3.cpp -fopenmp -DFIRSTVAR -DTYPEDYNAMIC
-	g++ -o program3 task3.cpp -fopenmp -DSECONDVAR
+	make task1
+	make task2
+	make task3
+	
 task1:
-	gcc -o program task1.c -fopenmp -DFIRSTVAR -DTYPEGUIDED
+	gcc -o $@ task1.c $(lib) 
 task2:
-	gcc -o  program2 task2.c -lm -fopenmp -DFIRSTVAR -DTYPEGUIDED
+	gcc -o  $@ task2.c -lm $(lib) 
 task3:
-	g++ -o program3 task3.cpp -fopenmp -DSECONDVAR
-	g++ -o program3_1var_guided task3.cpp -fopenmp -DFIRSTVAR -DTYPEGUIDED
-	g++ -o program3_1var_static task3.cpp -fopenmp -DFIRSTVAR -DTYPESTATIC
-	g++ -o program3_1var_dynamic task3.cpp -fopenmp -DFIRSTVAR -DTYPEDYNAMIC
-remove:
-	make
-	rm program
-	rm program2
-	rm program3
-	rm program3_1var_dynamic
-	rm program3_1var_guided
-	rm program3_1var_static
+	g++ -o $@ task3_1.cpp $(lib)
+	g++ -o task3_guided task3.cpp $(lib) -DTYPEGUIDED
+	g++ -o task3_static task3.cpp $(lib) -DTYPESTATIC
+	g++ -o task3_dynamic task3.cpp $(lib) -DTYPEDYNAMIC
+
+remove: all
+	rm task1 task2 task3 task3_dynamic task3_guided task3_static
